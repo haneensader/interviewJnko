@@ -10,13 +10,13 @@
 # Then, I went over the list, looking for information in the data to support each of my claims.
 # But before we do anything, let's take a general look on the data.
 
-# In[23]:
+# In[286]:
 
 def get_date_fields(date):
-    day = int(date.split("-")[0])
-    month = int(date.split("-")[1])
-    year = int(date.split("-")[2])
-    return day, month, year
+	day = int(date.split("-")[0])
+	month = int(date.split("-")[1])
+	year = int(date.split("-")[2])
+	return day, month, year
 
 datasetFile = 'joontalks_1487232405444.csv'
 # Load the dataset
@@ -27,26 +27,25 @@ fh = open(datasetFile)
 datasetReader = csv.DictReader(fh)
 datasetDict = []
 for row in datasetReader:
-        if ( row['Number of Attendees'] == '' ):
-            row['Number of Attendees'] = 1
-        
-        # Add speaker seniority field
-        day, month, year = get_date_fields(row['Speaker\'s Joining Date'])
-        join_date = date(year, month, day)
-        day, month, year = get_date_fields(row['Session Date'])
-        session_date = date(year, month, day)
-        speaker_seniority = (session_date - join_date).days / 352
-        
-        row['Speaker Seniority'] = speaker_seniority
+		if ( row['Number of Attendees'] == '' ):
+			continue
+		# Add speaker seniority field
+		day, month, year = get_date_fields(row['Speaker\'s Joining Date'])
+		join_date = date(year, month, day)
+		day, month, year = get_date_fields(row['Session Date'])
+		session_date = date(year, month, day)
+		speaker_seniority = (session_date - join_date).days / 352
+		
+		row['Speaker Seniority'] = speaker_seniority
 
-        # Add client seniority field
-        day, month, year = get_date_fields(row['Client\'s Joining Date'])
-        join_date = date(year, month, day)
-        client_seniority = (session_date - join_date).days  / 352
+		# Add client seniority field
+		day, month, year = get_date_fields(row['Client\'s Joining Date'])
+		join_date = date(year, month, day)
+		client_seniority = (session_date - join_date).days  / 352
 
-        row['Client Seniority'] = client_seniority
+		row['Client Seniority'] = client_seniority
         
-        datasetDict.append(row)
+		datasetDict.append(row)
         
 print "-I- Found",len(datasetDict),"samples in the dataset"
 print "-I- Found the following features:",datasetReader.fieldnames
@@ -194,7 +193,7 @@ plt.show()
 # 
 # We can notice that some of our features are continous, and some are categorical. To be able to train the model, we will have to do some pre processing to our data. One method is to convert each categorical feature with a set of features representing a one-hot vector encoding.
 
-# In[247]:
+# In[287]:
 
 def addFeaturesToRow(row, client_departments, speaker_fields):
     # Speaker's Gender
@@ -266,7 +265,7 @@ for i in range(len(datasetDict)):
 
 # Our data has around 100,000 samples out of which only 28,000 are for females. To mitigate this unbalanace I will take a subsample of the data, such that it will contain a mora balanced representation of the genders. My chosen sample has 60,000 examples, with ~50% female speakers.
 
-# In[262]:
+# In[288]:
 
 from random import shuffle
 female_data = data[data[:, 0] == 1, :]
@@ -285,7 +284,7 @@ shuffle(sample)
 
 # I will now split the data into training and validation: 80% for training and 20% for validation
 
-# In[263]:
+# In[289]:
 
 valSize = int(0.2 * sampleSize)
 trainSize = sampleSize - valSize
@@ -299,10 +298,10 @@ valY = sample[trainSize:sampleSize,-1]
 # 
 # Note: The number of trees in the forest, and the min_samples_split were chosen with trial and error. Both had little effect on the MSE.
 
-# In[274]:
+# In[290]:
 
 from sklearn.ensemble import RandomForestRegressor
-rfr = RandomForestRegressor(20,  min_samples_split = 2)
+rfr = RandomForestRegressor(10,  min_samples_split = 10)
 rfr.fit(trainX, trainY)
 
 predicted_valY = rfr.predict(valX)
@@ -314,9 +313,10 @@ print "-I- MSE on the validation set is",mse
 # 
 # Now, let us try our method on a few examples and look at the results.
 
-# In[266]:
+# In[298]:
 
 def biasStrength(rfr, mse, x, y):    
+    from math import sqrt
     predy = rfr.predict(x)
     if ( x[0,0] == 0 ):
         x[0,0] = 1
@@ -326,8 +326,8 @@ def biasStrength(rfr, mse, x, y):
     print "Prediction:",predy
     print "Opposit gender prediction:",predy_oposite_gender
     err = (predy_oposite_gender - predy) ** 2
-    bias = err/mse * 100
-    return bias[0]
+    bias = sqrt(err/mse) * 100
+    return bias
 
 for i in [0, 1927, 8237, 20000]:
     row = datasetDict[i]
@@ -336,18 +336,13 @@ for i in [0, 1927, 8237, 20000]:
     print x
     bias = biasStrength(rfr, mse, x, y)
     print bias,"%"
-    if ( bias > 50 ):
+    if ( bias > 100 ):
         print "Yes\n"
     else:
         print "No\n"
 
-import pickle
-with open('joonTalk.pkl', 'wb') as output:
-    data = dict()
-    data['rfr'] = rfr
-    data['mse'] = mse
-    data['datasetDict'] = datasetDict
-    data['features'] = features
-    data['num_features'] = num_features
-    data['value_field'] = value_field
-    pickle.dump(data, output, pickle.HIGHEST_PROTOCOL)
+
+# In[ ]:
+
+
+
